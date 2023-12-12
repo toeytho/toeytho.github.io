@@ -409,7 +409,7 @@ tempi4 %>% group_by(year,name_school,name_prov,name_local) %>%
   ggplot(aes(x=cv_mean, y=cv_med))+
   geom_point()
 
-#หาสัมประสิทธิ์การแปรผัน cv ระดับเขพลพื้นที่
+#หาสัมประสิทธิ์การแปรผัน cv ระดับเขตพื้นที่
 #coefficient of variance 
 
 table(tempi4$name_local)
@@ -436,10 +436,8 @@ glimpse(ttempi4)
 sum(is.na(ttempi4[4]))
 
   
-  
 
 
-MM <- matrix(c(AA,BB),nrow=3,ncol=2)
 
 
 
