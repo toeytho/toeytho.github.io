@@ -1,0 +1,527 @@
+---
+title: "Untitled"
+output: html_document
+date: "2023-12-17"
+---
+
+```{r}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+```
+
+
+```{r}
+#item 1
+ach <- read.csv("/Users/pariwatthamma/Downloads/ach.csv")
+
+glimpse(ach)
+summary(ach)
+table(ach[])
+length(table(ach[6]))
+```
+
+
+```{r}
+#item 1.1
+#ผลสัมฤทธิ์ทางการเรียนของนักเรียนมีความแตกต่างกันระหว่างชั้นเรียนอย่างไร (15 คะแนน)
+## สำรวจข้อมูล
+ach %>% ggplot(aes(x=factor(class), y=ach))+
+  geom_boxplot()
+
+ach %>%
+  ggplot(aes(x = class, y= ach, col = ach))+
+  geom_point()+
+  geom_smooth(method ="lm", se = F,col="red")
+
+ach %>% group_by(class) %>% 
+  summarise(mean_ach=mean(ach)) %>%
+   ggplot(aes(x = class, y= mean_ach, col = mean_ach))+
+  geom_point()+
+  geom_smooth(method ="lm", se = F,col="red")
+
+###ทำแบบfrequentist: one-way ANOVA
+ach_class_anova <- lm(ach ~ class, data= ach)
+anova(ach_class_anova)
+summary(ach_class_anova)
+plot(ach_class_anova)
+
+#นักเรียนแต่ละชั้นเรียนไม่มีอิทธิผลต่อผลสัมฤทธิ์ทางการเรียนอย่างมีนัยสำคัญทางสถิติที่ระดับ 0.05 เพราะ ค่าp มากกว่า 0.05 ค่า p เท่ากับ 0.1389 F=2.1923
+
+###ทำแบบbayesian: one-way ANOVA
+library(brms)
+ach_class_anova_brm <- brm(ach ~ class, data=ach,
+                  family=gaussian(), chains = 4, iter = 10000,
+                    cores = getOption("mc.cores", 3))
+
+summary(ach_class_anova_brm)
+plot(ach_class_anova_brm)
+confint(ach_class_anova_brm)
+ranova(ach_class_anova_brm)
+
+ach %>% 
+  ggplot(aes(x = mathach, y = after_stat(scaled)))+
+  geom_density(fill = "grey", adjust = 3, show.legend = F)+
+  geom_density(aes(fill = schid, y= after_stat(density)*5), 
+               adjust = 1.5, show.legend = F, alpha = 0.5)+
+  theme_light()
+
+
+```
+
+
+```{r}
+#item1.2
+#ผลสัมฤทธิ์ทางการเรียนของนักเรียนในชั้นเรียนที่ครูมีประสบการณ์แตกต่างกัน มีแนวโน้มเป็นอย่างไร (15 คะแนน)
+
+
+ach %>%
+  ggplot(aes(x = texp, y = ach))+
+  geom_point()+
+  geom_smooth(method = "lm", se =F)+
+  theme_light()
+
+#regression แบบ frequentist
+ach_texp_reg <- lm(ach ~ texp , data = ach)
+anova(ach_texp_reg)
+summary(ach_texp_reg)
+plot(ach_texp_reg)
+
+# มีแนวโน้มเพิ่มขึ้น เล็กน้อย
+
+#regression แบบเบส์
+ach_texp_reg_bayes <- brm(ach ~ texp , data = ach,
+                     family = gaussian(),
+                     iter = 5000,
+                     chains = 4)
+
+summary(ach_texp_reg_bayes)
+plot(ach_texp_reg_bayes)
+
+```
+
+
+```{r}
+#item1.3
+#จากการทบทวนวรรณกรรมที่เกี่ยวข้องพบว่ามีผลการวิจัยในอดีตที่ศึกษาอิทธิพลของ
+#การทบทวนบทเรียนด้วยตนเองที่มีต่อผลสัมฤทธิ์ทางการเรียนของนักเรียนด้วยการวิเคราะห์การถดถอยอย่างง่าย พบว่า
+#"เวลาในการทบทวนบทเรียนของนักเรียนดังกล่าวสามารถอธิบายความผันแปร
+#ในผลสัมฤทธิ์ทางการเรียนของนักเรียนได้เพียงร้อยละ 10 เท่านั้น"
+#จากผลการวิเคราะห์นี้นักวิจัยจึงสรุปว่า การทบทวนบทเรียนด้วยตนเองของนักเรียน
+#ไม่ใช่ปัจจัยสำคัญที่มีผลต่อผลสัมฤทธิ์ทางการเรียนของนักเรียน หากท่านเป็นนักวิจัย
+#ที่จะทำการศึกษาในประเด็นวิจัยดังกล่าวใหม่โดยใช้ข้อมูลจากชุดข้อมูล
+#ach.csv ท่านจะสนับสนุนหรือโต้แย้งผลการวิจัยในอดีตนี้อย่างไร (15 คะแนน)
+
+ach %>%
+  ggplot(aes(x = hour, y = ach))+
+  geom_point()+
+  geom_smooth(method = "lm", se =F)+
+  theme_light()
+
+#frequentist
+ach_hour_reg <- lm(ach ~ hour , data = ach)
+anova(ach_hour_reg)
+summary(ach_hour_reg)
+plot(ach_hour_reg)
+#ตอบ 9.9 เปอ ดูจาก multiple R2 = 0.09973
+
+
+#bayes
+ach_hour_reg_bayes <- brm(ach ~ hour , data = ach,
+                     family = gaussian(),
+                     iter = 5000,
+                     chains = 4)
+
+summary(ach_hour_reg_bayes)
+plot(ach_hour_reg_bayes)
+
+
+```
+
+
+```{r}
+#item1.4
+#หากมีการควบคุมผลจากปัจจัยคือจำนวนชั่วโมงที่นักเรียนใช้ทบทวนบทเรียนต่อ
+#สัปดาห์ให้คงที่แล้ว ความแตกต่างของผลสัมฤทธิ์ทางการเรียนระหว่างเพศชายกับหญิงเป็นอย่างไร
+#ความแตกต่างดังกล่าวมีความผันแปรไปตามประสบการณ์การสอนของครูประจำชั้นหรือไม่ อย่างไร (15 คะแนน)
+
+ach %>%
+  ggplot(aes(x = gender, y = ach))+
+  geom_boxplot()+
+  theme_light()
+
+ach_gender_reg <- lm(ach ~ gender, data=ach)
+anova(ach_gender_reg)
+summary(ach_gender_reg)
+plot(ach_gender_reg)
+
+ach_gendertexp_reg <- lm(ach ~ texp+ gender + texp:gender, data=ach)
+anova(ach_gendertexp_reg)
+summary(ach_gendertexp_reg)
+plot(ach_gendertexp_reg)
+
+#ach ของชายและหญิงมีความแตกต่างกันโดยของเพศหญิงมีคะแนนสูงกว่าเพศชาย
+#ความแตกต่างดังกล่าวไม่ได้แปรผันตามtexp 
+
+
+ach_gendertexp_bayes <- brm(ach ~ texp+ gender + texp:gender, data=ach,
+                     family = gaussian(),
+                     iter = 5000,
+                     chains = 4)
+
+summary(ach_reg_bayes)
+plot(ach_reg_bayes)
+
+ach_reg_bayes %>% tidy_draws() %>% 
+  ggplot(aes(x=b_Intercept))+
+  stat_halfeye()
+
+waic(fit_randomcoef_bayes,fit_ranova_freq)
+loo(fit_randomcoef_bayes,fit_ranova_freq)
+
+```
+
+
+```{r}
+#item 2
+CFA <- read.csv("/Users/pariwatthamma/Downloads/CFA.csv")
+
+glimpse(CFA)
+```
+
+
+```{r}
+#item2.1
+#โมเดลการวัดแบบหนึ่งองค์ประกอบที่เสนอโดยนักวิจัยมีความสอดคล้องเชิงประจักษ์กับข้อมูลหรือไม่
+#เพราะเหตุใด และหากโมเดลมีแนวโน้มจะไม่สอดคล้องกับข้อมูลเชิงประจักษ์ท่านคิดว่าเป็นเพราะเหตุใด (20 คะแนน)
+
+
+CFA  <- CFA |> 
+  select(starts_with("x")) |>
+  mutate_at(vars(starts_with("x")), scale)
+
+baseline1_cfa <-'
+ F3 =~ x1 + x2 + x3 + x4 + x5 + x6
+'
+
+## 2. prepare function for iteration
+run_model <- function(model, data, seed = 123, 
+                      n.chain = 2, sample = 1000 ,
+                      burnin = 1000, adapt = 1000, thin = 1,
+                      dp = dpriors())
+{
+  set.seed(seed)
+  bcfa(model, data = data,
+              n.chains = n.chain,
+              sample = sample,
+              burnin = burnin,
+              adapt = adapt,
+              dp = dp,
+              bcontrol = list(cores = n.chain, thin = thin))
+}
+
+fit_baseline1 <- map(1:5, ~run_model(model = baseline1_cfa, data = CFA))
+
+fit_baseline1[[1]] |> blavFitIndices(pD = "loo", rescale = "ppmc", fit.measures = "BRMSEA") |> summary()
+
+
+## extract fit index
+extract_fit <- function(result){
+  result |> blavFitIndices(pD = "loo", rescale = "ppmc", fit.measures = "BRMSEA") |> 
+    summary()
+}
+
+
+fit_index_list <- map(fit_baseline1, extract_fit)
+
+fit_record <- fit_index_list |> 
+  bind_rows() |> 
+  mutate(model = "1-component")
+
+fit_record |> 
+  ggplot(aes(x=model, y=EAP))+
+  geom_point()+
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2)+
+  theme_bw()
+```
+
+
+```{r}
+#item2.2
+#จากการทบทวนวรรณกรรมเพิ่มเติมพบว่า เป็นไปได้ที่โมเดลการวัดความเป็นพลเมืองจะเป็นโมเดลการวัด
+#แบบสององค์ประกอบ โดยองค์ประกอบแรก (F1) วัดด้วยตัวแปรสังเกตได้ x1, x2 และ x3 ส่วนองค์ประกอบที่สอง (F2)
+#วัดด้วยตัวแปรสังเกตได้ x4, x5 และ x6 ขอให้นิสิตใช้วิธีการแบบเบส์วิเคราะห์ข้อมูลเพื่อสรุปว่า
+#ระหว่างโมเดลการวัดแบบหนึ่งองค์ประกอบและสององค์ประกอบ โมเดลใดเป็นโมเดลการวัดที่มีความเหมาะสมมากที่สุด (20 คะแนน)
+
+
+baseline2_cfa <-'
+ F1 =~ x1 + x2 + x3 
+ F2 =~ x4 + x5 + x6
+'
+
+## 2. prepare function for iteration
+run_model <- function(model, data, seed = 123, 
+                      n.chain = 2, sample = 1000 ,
+                      burnin = 1000, adapt = 1000, thin = 1,
+                      dp = dpriors())
+{
+  set.seed(seed)
+  bcfa(model, data = data,
+              n.chains = n.chain,
+              sample = sample,
+              burnin = burnin,
+              adapt = adapt,
+              dp = dp,
+              bcontrol = list(cores = n.chain, thin = thin))
+}
+
+fit_baseline2 <- map(1:5, ~run_model(model = baseline2_cfa, data = CFA))
+
+fit_baseline2[[1]] |> blavFitIndices(pD = "loo", rescale = "ppmc", fit.measures = "BRMSEA") |> summary()
+
+
+## extract fit index
+extract_fit <- function(result){
+  result |> blavFitIndices(pD = "loo", rescale = "ppmc", fit.measures = "BRMSEA") |> 
+    summary()
+}
+
+
+fit_index_list <- map(fit_baseline2, extract_fit)
+
+fit_record <- fit_record |> 
+   bind_rows(
+ fit_index_list |> 
+  bind_rows() |> 
+  mutate(model = "2-component"))
+
+fit_record |> 
+  ggplot(aes(x=model, y=EAP))+
+  geom_point()+
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2)+
+  theme_bw()
+
+
+psrf_extract <- function(result)
+{
+  result |>
+    blavInspect(what="psrf") |>
+    max()
+}
+
+psrf_list <- map(fit_baseline2,psrf_extract)
+psrf_list |> unlist()< 1.05
+
+
+
+
+
+```
+
+
+
+
+
+```{r}
+cross_loadings <-'
+## main factor loadings
+ F1 =~ x1 + prior("normal(0.5,100)")*x2 + prior("normal(0.5,100)")*x3 
+ F2 =~ x4 + prior("normal(0.5,100)")*x5 + prior("normal(0.5,100)")*x6
+  
+## cross-loadings
+F1 =~ x4 + x5 + x6 
+F2 =~ x1 + x2 + x3 
+' 
+
+## 2. prepare function for iteration
+run_model <- function(model, data, seed = 123, 
+                      n.chain = 2, sample = 1000 ,
+                      burnin = 1000, adapt = 1000, thin = 1,
+                      dp = dpriors())
+{
+  set.seed(seed)
+  bcfa(model, data = data,
+              n.chains = n.chain,
+              sample = sample,
+              burnin = burnin,
+              adapt = adapt,
+              dp = dp,
+              bcontrol = list(cores = n.chain, thin = thin))
+}
+
+### ----- SD = 0.001 ----- ###
+fit_crossloading1 <- map(1:5, ~run_model(model = cross_loadings, data = dat,
+                                    dp = dpriors(lambda ="normal(0,0.001)")))
+
+
+
+fit_index_list <- map(fit_crossloading1, extract_fit)
+
+
+fit_record <- fit_record |> 
+  bind_rows(
+ fit_index_list |> 
+  bind_rows() |> 
+  mutate(model = "CL_SD0.001"))
+
+
+
+fit_record |> 
+  ggplot(aes(x=model, y=EAP))+
+  geom_point()+
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2)+
+  theme_bw()
+
+
+#### ---- SD = 0.05 ---- ####
+fit_crossloading3 <- map(1:5, ~run_model(model = cross_loadings, data = dat,
+                                    dp = dpriors(lambda ="normal(0,0.05)")))
+
+
+fit_index_list <- map(fit_crossloading3, extract_fit)
+
+
+fit_record <- fit_record |> 
+  bind_rows(
+ fit_index_list |> 
+  bind_rows() |> 
+  mutate(model = "CL_SD0.05"))
+
+fit_record |> 
+  ggplot(aes(x=model, y=EAP))+
+  geom_point()+
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2)+
+  theme_bw()
+
+
+#### ---- SD = 0.01 ---- ####
+fit_crossloading4 <- map(1:5, ~run_model(model = cross_loadings, data = dat,
+                                    dp = dpriors(lambda ="normal(0,0.01)")))
+
+
+fit_index_list <- map(fit_crossloading4, extract_fit)
+
+
+fit_record <- fit_record |> 
+  bind_rows(
+ fit_index_list |> 
+  bind_rows() |> 
+  mutate(model = "CL_SD0.01"))
+
+fit_record |> 
+  ggplot(aes(x=model, y=EAP))+
+  geom_point()+
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2)+
+  theme_bw()
+
+
+
+
+#### ---- SD = 0.1 ---- ####
+fit_crossloading5 <- map(1:5, ~run_model(model = cross_loadings, data = dat,
+                                    dp = dpriors(lambda ="normal(0,0.1)")))
+
+
+fit_index_list <- map(fit_crossloading5, extract_fit)
+
+
+fit_record <- fit_record |> 
+  bind_rows(
+ fit_index_list |> 
+  bind_rows() |> 
+  mutate(model = "CL_SD0.1"))
+
+fit_record |> 
+  ggplot(aes(x=model, y=EAP))+
+  geom_point()+
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2)+
+  theme_bw()
+
+
+
+#### ---- SD = 0.3 ---- ####
+fit_crossloading6 <- map(1:5, ~run_model(model = cross_loadings, data = dat,
+                                    dp = dpriors(lambda ="normal(0,0.3)")))
+
+
+fit_index_list <- map(fit_crossloading6, extract_fit)
+
+
+fit_record <- fit_record |> 
+  bind_rows(
+ fit_index_list |> 
+  bind_rows() |> 
+  mutate(model = "CL_SD0.3"))
+
+fit_record |> 
+  ggplot(aes(x=model, y=EAP))+
+  geom_point()+
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2)+
+  theme_bw()
+
+
+#ตรวจการลู่เข้าของโมเดล
+
+fit_crossloading5[[1]] |> summary()
+
+
+psrf_extract <- function(result)
+{
+  result |>
+    blavInspect(what="psrf") |>
+    max()
+}
+
+psrf_list <- map(fit_crossloading5,psrf_extract)
+psrf_list |> unlist()< 1.05
+
+
+
+psrf_extract <- function(result)
+{
+  result |>
+    blavInspect(what="psrf") |>
+    summary()
+}
+psrf_list <- map(fit_crossloading5,psrf_extract)
+psrf_list |> bind_rows()
+
+
+
+
+fit_crossloading5[[1]] |>  blavInspect(what = "mcmc") |> 
+  tidy_draws() |> 
+  select(.chain, .iteration,starts_with("ly")) |>
+  select(1:10) |> 
+  pivot_longer(starts_with("ly"), names_to = "loadings", values_to = "values") |> 
+  mutate(.chain = factor(.chain)) |> 
+  ggplot(aes(x=.iteration, y=values, col = .chain))+
+  geom_path()+
+  theme_bw()+
+  facet_wrap(~loadings, scales = "free_y")
+
+
+fit_crossloading5[[1]] |>  blavInspect(what = "mcmc") |> 
+  tidy_draws() |> 
+  select(.chain, .iteration,starts_with("Theta")) |>
+  pivot_longer(starts_with("Theta"), names_to = "theta", values_to = "values") |> 
+  mutate(.chain = factor(.chain)) |> 
+  ggplot(aes(x=.iteration, y=values, col = .chain))+
+  geom_path()+
+  theme_bw()+
+  facet_wrap(~theta, scales = "free_y")
+
+
+fit_crossloading5[[1]] |>  blavInspect(what = "mcmc") |> 
+  tidy_draws() |> 
+  select(.chain, .iteration,starts_with("Psi")) |>
+  pivot_longer(starts_with("Psi"), names_to = "psi", values_to = "values") |> 
+  mutate(.chain = factor(.chain)) |> 
+  ggplot(aes(x=.iteration, y=values, col = .chain))+
+  geom_path()+
+  theme_bw()+
+  facet_wrap(~psi, scales = "free_y")
+```
+
+
+
